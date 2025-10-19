@@ -242,7 +242,7 @@ createTempProcessDir () {
 }
 
 checkBinary () {
-	local p rc=$Ex_Ok
+	local p exitCode=$Ex_Ok
 
 	for b in "$@"; do
 		p="x${b}Y"
@@ -252,15 +252,15 @@ checkBinary () {
 				foundBinaries="${foundBinaries}${p}"
 				continue
 			else
-				rc=$Ex_Ko binaryMissing=true
+				exitCode=$Ex_Ko binaryMissing=true
 				printWarning "binary \"${b}\" not found. Make sure it is in your \$PATH."
 			fi
 		elif [ -z "$foundBinaries" -o "$foundBinaries" = "${foundBinaries//$p/@}" ]; then # binary was previously searched, but not found
-			rc=$Ex_Ko
+			exitCode=$Ex_Ko
 		fi
 	done
 
-	return $rc
+	return $exitCode
 }
 
 checkBinaries () {
@@ -497,34 +497,34 @@ initFileVars () {
 }
 
 removeApetag () {
-	local ec=$Ex_Ok tempFile=''
+	local exitCode=$Ex_Ok tempFile=''
 
 	if [ "$apetagLocation" = 'bottom' ]; then
 		if which 'truncate' 1>/dev/null 2>&1 ; then
-			truncate -s $apetagOffset "$file" 2>/dev/null ; ec=$?
+			truncate -s $apetagOffset "$file" 2>/dev/null ; exitCode=$?
 		elif which 'gtruncate' 1>/dev/null 2>&1 ; then
-			gtruncate -s $apetagOffset "$file" 2>/dev/null ; ec=$?
+			gtruncate -s $apetagOffset "$file" 2>/dev/null ; exitCode=$?
 		else
 			tempFile="${tempProcessDir}/tempfile"
-			head -c $apetagOffset "$file" 2>/dev/null | dd of="$tempFile" bs=$(( 8192 * 1024 )) 1>/dev/null 2>&1 ; ec=$?
-			if [ $ec -eq $Ex_Ok ]; then
+			head -c $apetagOffset "$file" 2>/dev/null | dd of="$tempFile" bs=$(( 8192 * 1024 )) 1>/dev/null 2>&1 ; exitCode=$?
+			if [ $exitCode -eq $Ex_Ok ]; then
 				rm -f "$file" 1>/dev/null 2>&1 &&
-				mv -f "$tempFile" "$file" 1>/dev/null 2>&1 ; ec=$?
+				mv -f "$tempFile" "$file" 1>/dev/null 2>&1 ; exitCode=$?
 			fi
 			if [ -e "$tempFile" ]; then rm -f "$tempFile"; fi
 		fi
 		resetApetagProperties
-		return $ec
+		return $exitCode
 	else # apetagLocation = 'top'
 		tempFile="${tempProcessDir}/tempfile"
-		tail -c $(( fileSize - (32 + tagSize) )) "$file" 2>/dev/null | dd of="$tempFile" bs=$(( 8192 * 1024 )) 1>/dev/null 2>&1 ; ec=$?
+		tail -c $(( fileSize - (32 + tagSize) )) "$file" 2>/dev/null | dd of="$tempFile" bs=$(( 8192 * 1024 )) 1>/dev/null 2>&1 ; exitCode=$?
 		resetApetagProperties
-		if [ $ec -eq $Ex_Ok ]; then
+		if [ $exitCode -eq $Ex_Ok ]; then
 			rm -f "$file" 1>/dev/null 2>&1 &&
-			mv -f "$tempFile" "$file" 1>/dev/null 2>&1 ; ec=$?
+			mv -f "$tempFile" "$file" 1>/dev/null 2>&1 ; exitCode=$?
 		fi
 		if [ -e "$tempFile" ]; then rm -f "$tempFile"; fi
-		return $ec
+		return $exitCode
 	fi
 }
 
@@ -787,21 +787,21 @@ getItem () {
 }
 
 getItems () {
-	local ec=$Ex_Ok
+	local exitCode=$Ex_Ok
 
 	itemOffset="$itemsOffset"
 	for ((i=0; i<itemsCount; i++)); do
-		getItem; ec=$?
-		if [ $ec -eq $Ex_Ok ]; then
+		getItem; exitCode=$?
+		if [ $exitCode -eq $Ex_Ok ]; then
 			itemKeys[$i]="$itemKey"
 			itemLowercaseKeys[$i]="$itemLowercaseKey"
 			itemValues[$i]="$itemValue"
 			allKeys="${allKeys}x${itemLowercaseKey}Y"
 		else
-			return $ec
+			return $exitCode
 		fi
 	done
-	return $ec
+	return $exitCode
 }
 
 removeItems () {
@@ -1114,7 +1114,7 @@ checkInputValueLength () {
 }
 
 doListAction () {
-	local ec=$Ex_Ok
+	local exitCode=$Ex_Ok
 
 	if hasApetag ; then
 		getApetagSize &&
@@ -1122,15 +1122,15 @@ doListAction () {
 		getItemsOffset &&
 		getNumberOfItems &&
 		getItems &&
-		listItems ; ec=$?
+		listItems ; exitCode=$?
 	else
 		printWarning "file \"${file}\" does not contain an APEv2 tag."
 	fi
-	return $ec
+	return $exitCode
 }
 
 doDumpAction () {
-	local ec=$Ex_Ok
+	local exitCode=$Ex_Ok
 
 	if hasApetag ; then
 		getApetagSize &&
@@ -1138,58 +1138,58 @@ doDumpAction () {
 		getItemsOffset &&
 		getNumberOfItems &&
 		getItems &&
-		dumpItems ; ec=$?
+		dumpItems ; exitCode=$?
 	else
 		printWarning "file \"${file}\" does not contain an APEv2 tag."
-		ec=$Ex_Ko
+		exitCode=$Ex_Ko
 	fi
-	return $ec
+	return $exitCode
 }
 
 doCopyAction () {
-	local ec=$Ex_Ok
+	local exitCode=$Ex_Ok
 
 	if hasApetag ; then
 		getApetagSize &&
 		getApetagOffset &&
-		removeApetag; ec=$?
+		removeApetag; exitCode=$?
 	fi
 
-	if [ $ec -eq $Ex_Ok ]; then
+	if [ $exitCode -eq $Ex_Ok ]; then
 		if [ "$copyApetagLocation" = 'bottom' ]; then
-			cat "${tempDir}/common/apecopy" >> "$file" 2>/dev/null || ec=$Ex_Ko
+			cat "${tempDir}/common/apecopy" >> "$file" 2>/dev/null || exitCode=$Ex_Ko
 		elif [ "$copyApetagLocation" = 'top' ]; then
 			tempFile="${tempProcessDir}/tempfile"
 			cp "${tempDir}/common/apecopy" "$tempFile" 1>/dev/null 2>&1 &&
 			cat "$file" >> "$tempFile" 1>/dev/null 2>&1 &&
 			rm -f "$file" 1>/dev/null 2>&1 &&
-			mv -f "$tempFile" "$file" 1>/dev/null 2>&1 || ec=$Ex_Ko
+			mv -f "$tempFile" "$file" 1>/dev/null 2>&1 || exitCode=$Ex_Ko
 		else
-			ec=$Ex_Software
+			exitCode=$Ex_Software
 		fi
 	else
-		ec=$Ex_Software
+		exitCode=$Ex_Software
 	fi
 
-	if [ $ec -eq $Ex_Software ]; then
+	if [ $exitCode -eq $Ex_Software ]; then
 		printError "internal software error."
 	fi
-	return $ec
+	return $exitCode
 }
 
 doWriteAction () {
-	local ec=$Ex_Ok artworkFilename
+	local exitCode=$Ex_Ok artworkFilename
 
 	if [ $removeAllTags = true ]; then
 		if hasApetag ; then
 			getApetagSize &&
 			getApetagOffset &&
-			removeApetag; ec=$?
+			removeApetag; exitCode=$?
 			if [ $newTagsCount = 0 ]; then
-				return $ec
+				return $exitCode
 			fi
 		elif [ $newTagsCount = 0 ]; then
-			return $ec
+			return $exitCode
 		fi
 
 		itemsCount=0 allKeys=''
@@ -1199,7 +1199,7 @@ doWriteAction () {
 		declare -a itemValues=()
 	fi
 
-	if [ $ec -eq $Ex_Ok ]; then
+	if [ $exitCode -eq $Ex_Ok ]; then
 		if hasApetag ; then
 			getApetagSize &&
 			getApetagOffset &&
@@ -1207,44 +1207,44 @@ doWriteAction () {
 			getNumberOfItems &&
 			getItems &&
 			removeItems &&
-			removeApetag ; ec=$?
+			removeApetag ; exitCode=$?
 		fi
 
-		if [ $ec -eq $Ex_Ok ]; then
-			addNewItems; ec=$?
+		if [ $exitCode -eq $Ex_Ok ]; then
+			addNewItems; exitCode=$?
 			if [ $itemsCount -gt 0 ]; then
 				writeNewApetag &&
-				listItems; ec=$?
+				listItems; exitCode=$?
 			fi
 		fi
 	fi
 
-	return $ec
+	return $exitCode
 }
 
 doAction () {
-	local ec=$Ex_Ok
+	local exitCode=$Ex_Ok
 
 	initFileVars
 	case "$action" in
-		list) doListAction ; ec=$? ;;
-		dump) doDumpAction ; ec=$? ;;
-		copy) doCopyAction ; ec=$? ;;
-		write) doWriteAction ; ec=$? ;;
+		list) doListAction ; exitCode=$? ;;
+		dump) doDumpAction ; exitCode=$? ;;
+		copy) doCopyAction ; exitCode=$? ;;
+		write) doWriteAction ; exitCode=$? ;;
 	esac
-	return $ec
+	return $exitCode
 }
 
 waitForJobs () {
-	local jn ec=$Ex_Ok jec
+	local jn exitCode=$Ex_Ok jec
 
 	for jn in $( jobs -p ); do
-		wait $jn ; jec=$?
-		if [ $jec -ne $Ex_Ok ]; then
-			ec=$jec
+		wait $jn ; jobExitCode=$?
+		if [ $jobExitCode -ne $Ex_Ok ]; then
+			exitCode=$jobExitCode
 		fi
 	done
-	return $ec
+	return $exitCode
 }
 
 # main() ======================================================================
@@ -1545,7 +1545,7 @@ else
 	fi
 fi
 
-ec=$Ex_Ok
+exitCode=$Ex_Ok
 if [ "$action" = 'copy' ]; then
 	file="$copyFromFile"
 	initFileVars
@@ -1553,20 +1553,20 @@ if [ "$action" = 'copy' ]; then
 	createTempProcessDir
 	if hasApetag ; then
 		getApetagSize &&
-		getApetagOffset; ec=$?
-		if [ $ec -eq $Ex_Ok ]; then
+		getApetagOffset; exitCode=$?
+		if [ $exitCode -eq $Ex_Ok ]; then
 			if [ "$apetagLocation" = 'bottom' ]; then
 				if [ $hasHeader = true ]; then
-					tail -c $(( 32 + tagSize )) "$copyFromFile" > "${tempDir}/common/apecopy" 2>/dev/null ; ec=$?
+					tail -c $(( 32 + tagSize )) "$copyFromFile" > "${tempDir}/common/apecopy" 2>/dev/null ; exitCode=$?
 				else
-					tail -c $tagSize "$copyFromFile" > "${tempDir}/common/apecopy" 2>/dev/null ; ec=$?
+					tail -c $tagSize "$copyFromFile" > "${tempDir}/common/apecopy" 2>/dev/null ; exitCode=$?
 				fi
 			elif [ "$apetagLocation" = 'top' ]; then
-				head -c $(( 32 + tagSize )) "$copyFromFile" > "${tempDir}/common/apecopy" 2>/dev/null ; ec=$?
+				head -c $(( 32 + tagSize )) "$copyFromFile" > "${tempDir}/common/apecopy" 2>/dev/null ; exitCode=$?
 			else
-				ec=$Ex_Software
+				exitCode=$Ex_Software
 			fi
-			if [ $ec -ne $Ex_Ok ]; then
+			if [ $exitCode -ne $Ex_Ok ]; then
 				printError "internal software error."
 				cleanExit $Ex_Software
 			fi
@@ -1575,9 +1575,9 @@ if [ "$action" = 'copy' ]; then
 			getItemsOffset &&
 			getNumberOfItems &&
 			getItems &&
-			listItems; ec=$?
-			if [ $ec -ne $Ex_Ok ]; then
-				cleanExit $ec
+			listItems; exitCode=$?
+			if [ $exitCode -ne $Ex_Ok ]; then
+				cleanExit $exitCode
 			fi
 		fi
 	else
@@ -1610,14 +1610,14 @@ elif [ "$action" = 'write' ]; then
 	done
 fi
 
-ec=$Ex_Ok
+exitCode=$Ex_Ok
 if [ $nProcesses -eq 1 ]; then
 	pn=0
 	for ((fn=0; fn<nFiles; fn++)); do
 		file="${inputFiles[$fn]}"
 		createTempProcessDir
-		doAction; jec=$?
-		if [ $jec -ne $Ex_Ok ]; then ec=$jec; fi
+		doAction; jobExitCode=$?
+		if [ $jobExitCode -ne $Ex_Ok ]; then exitCode=$jobExitCode; fi
 		flushOutputQueue
 	done
 else
@@ -1627,8 +1627,8 @@ else
 			file="${inputFiles[$fn]}"
 			doAction &
 		else
-			waitForJobs ; jec=$?
-			if [ $jec -ne $Ex_Ok ]; then ec=$jec; fi
+			waitForJobs ; jobExitCode=$?
+			if [ $jobExitCode -ne $Ex_Ok ]; then exitCode=$jobExitCode; fi
 			flushOutputQueue
 			pn=0
 			file="${inputFiles[$fn]}"
@@ -1637,8 +1637,8 @@ else
 		fi
 	done
 
-	waitForJobs ; jec=$?
-	if [ $jec -ne $Ex_Ok ]; then ec=$jec; fi
+	waitForJobs ; jobExitCode=$?
+	if [ $jobExitCode -ne $Ex_Ok ]; then exitCode=$jobExitCode; fi
 	flushOutputQueue
 fi
-cleanExit $ec
+cleanExit $exitCode
