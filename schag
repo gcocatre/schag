@@ -17,7 +17,7 @@
 # http://wiki.hydrogenaudio.org/index.php?title=APEv2_specification
 
 declare -r Self_Name='schag'
-declare -r Self_Version='1.0.0'
+declare -r Self_Version='1.0.1'
 
 declare -r Ex_Ok=0            # successful termination
 declare -r Ex_Ko=1            # unsuccessful termination
@@ -1071,17 +1071,19 @@ dumpItems () {
 
 				if [ -n "$binaryFilename" ]; then
 					if [ "${dumpFiles[$k]}" = '-' ]; then
-						cat "${itemValue##*:}"
+						cat "${itemValue##*:}" 2>/dev/null || return $Ex_Cant_Create
 					elif [ "${itemLowercaseKeys[$i]}" = "$lowerCaseDumpFile" ]; then
 						binaryFilename="${binaryFilename%:*}"
-						cp "${itemValue##*:}" "$binaryFilename" 1>/dev/null
+						cp "${itemValue##*:}" "$binaryFilename" 1>/dev/null &&
+						chmod 'u=rw,go=r' "$binaryFilename" || return $Ex_Cant_Create
 					elif [ -z "${lowerCaseDumpFile##*/}" ]; then # path
 						binaryFilename="${binaryFilename%:*}"
 						if ! mkdir -p "${dumpFiles[$k]}" 1>/dev/null 2>/dev/null; then
 							printError "directory \"${dumpFiles[$k]}\" doesn't exist and cannot be created"
 							return $Ex_Cant_Create
 						fi
-						cp "${itemValue##*:}" "${dumpFiles[$k]}${binaryFilename}" 1>/dev/null || return $Ex_Cant_Create
+						cp "${itemValue##*:}" "${dumpFiles[$k]}${binaryFilename}" 1>/dev/null &&
+						chmod 'u=rw,go=r' "${dumpFiles[$k]}${binaryFilename}" || return $Ex_Cant_Create
 					elif [ "${lowerCaseDumpFile%/*}" != "${lowerCaseDumpFile##*/}" ]; then # path and filename
 						dumpFilePath="${dumpFiles[$k]%/*}"
 						binaryFilename="${dumpFiles[$k]##*/}"
@@ -1089,10 +1091,12 @@ dumpItems () {
 							printError "directory \"${dumpFilePath}\" doesn't exist and cannot be created"
 							return $Ex_Cant_Create
 						fi
-						cp "${itemValue##*:}" "${dumpFilePath}/${binaryFilename}" 1>/dev/null || return $Ex_Cant_Create
+						cp "${itemValue##*:}" "${dumpFilePath}/${binaryFilename}" 1>/dev/null &&
+						chmod 'u=rw,go=r' "${dumpFilePath}/${binaryFilename}" || return $Ex_Cant_Create
 					else
 						binaryFilename="${dumpFiles[$k]}"
-						cp "${itemValue##*:}" "$binaryFilename" 1>/dev/null
+						cp "${itemValue##*:}" "$binaryFilename" 1>/dev/null &&
+						chmod 'u=rw,go=r' "$binaryFilename" || return $Ex_Cant_Create
 					fi
 				else
 					if [ "${dumpFiles[$k]}" = '-' ]; then
@@ -1446,8 +1450,8 @@ while getopts 'CzZDhVit:r:Ra:b:d:f:' o ; do
 			dumpKey="$( echo -En "$dumpKey" | tr '[:upper:]' '[:lower:]' )"
 
 			dumpFile="${OPTARG#*=}"
-			if [ "$dumpFile" != "$dumpKey" -a ${#dumpFile} -lt 2 ]; then
-				printError "-${o}: you must provide a valid file path (2 chars minimum)."
+			if [ "$dumpFile" != "$dumpKey" -a ${#dumpFile} -lt 5 -a "$dumpFile" != '-' ]; then
+				printError "-${o}: you must provide a valid file path (5 chars minimum)."
 				cleanExit $Ex_Usage
 			fi
 
