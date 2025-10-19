@@ -19,6 +19,47 @@
 declare -r Self_Name='schag'
 declare -r Self_Version='1.0.0'
 
+declare -r Ex_Ok=0            # successful termination
+declare -r Ex_Ko=1            # unsuccessful termination
+declare -r Ex_Usage=64        # command line usage error
+declare -r Ex_Data_Err=65     # data format error
+declare -r Ex_No_Input=66     # cannot open input
+declare -r Ex_No_User=67      # addressee unknown
+declare -r Ex_No_Host=68      # host name unknown
+declare -r Ex_Unavailable=69  # service unavailable
+declare -r Ex_Software=70     # internal software error
+declare -r Ex_Os_Err=71       # system error (e.g., can't fork)
+declare -r Ex_Os_File=72      # critical OS file missing
+declare -r Ex_Cant_Create=73	# can't create (user) output file
+declare -r Ex_Io_Err=74       # input/output error
+declare -r Ex_Temp_Fail=75    # temp failure; user is invited to retry
+declare -r Ex_Protocol=76     # remote error in protocol
+declare -r Ex_No_Perm=77      # permission denied
+declare -r Ex_Config_Err=78   # configuration error
+declare -r Ex_Interrupt=143   # user interruption (Ctrl+C)
+
+if [ -n "$LC_ALL" ]; then
+	unset LC_ALL
+fi
+export LANG='en_US.UTF-8'
+export LC_NUMERIC='C'
+
+sedcmd='gsed' datecmd='date' gnudate=false
+if which 'uname' 1>/dev/null 2>&1 ; then
+	OS="$( uname -s )"
+	if [ "$OS" = 'Linux' ]; then
+		sedcmd='sed' datecmd='date' gnudate=true
+	else
+		if which 'gdate' 1>/dev/null 2>&1; then
+			datecmd='gdate' gnudate=true
+		else
+			datecmd='date' gnudate=false
+		fi
+	fi
+fi
+
+# Functions ====================================================================
+
 printUsage () {
 	echo "${Self_Name} ${Self_Version}: APEv2 tagger
 Copyright © 2013 - 2025 Guillaume Cocatre-Zilgien
@@ -1248,45 +1289,6 @@ waitForJobs () {
 }
 
 # main() ======================================================================
-
-declare -r Ex_Ok=0            # successful termination
-declare -r Ex_Ko=1            # unsuccessful termination
-declare -r Ex_Usage=64        # command line usage error
-declare -r Ex_Data_Err=65     # data format error
-declare -r Ex_No_Input=66     # cannot open input
-declare -r Ex_No_User=67      # addressee unknown
-declare -r Ex_No_Host=68      # host name unknown
-declare -r Ex_Unavailable=69  # service unavailable
-declare -r Ex_Software=70     # internal software error
-declare -r Ex_Os_Err=71       # system error (e.g., can't fork)
-declare -r Ex_Os_File=72      # critical OS file missing
-declare -r Ex_Cant_Create=73	# can't create (user) output file
-declare -r Ex_Io_Err=74       # input/output error
-declare -r Ex_Temp_Fail=75    # temp failure; user is invited to retry
-declare -r Ex_Protocol=76     # remote error in protocol
-declare -r Ex_No_Perm=77      # permission denied
-declare -r Ex_Config_Err=78   # configuration error
-declare -r Ex_Interrupt=143   # user interruption (Ctrl+C)
-
-if [ -n "$LC_ALL" ]; then
-	unset LC_ALL
-fi
-export LANG='en_US.UTF-8'
-export LC_NUMERIC='C'
-
-sedcmd='gsed' datecmd='date' gnudate=false
-if which 'uname' 1>/dev/null 2>&1 ; then
-	OS="$( uname -s )"
-	if [ "$OS" = 'Linux' ]; then
-		sedcmd='sed' datecmd='date' gnudate=true
-	else
-		if which 'gdate' 1>/dev/null 2>&1; then
-			datecmd='gdate' gnudate=true
-		else
-			datecmd='date' gnudate=false
-		fi
-	fi
-fi
 
 checkBinaries
 
